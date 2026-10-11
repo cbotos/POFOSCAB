@@ -50,21 +50,6 @@ jobs:
           wget -4 -q "https://mdk.cab/download/standalone/pofo.7z" -O /tmp/pofo.7z
           7z x -y -oroms/pofo /tmp/pofo.7z
 
-      - name: Generate version.inc from tag (tag builds only)
-        if: github.ref_type == 'tag'
-        working-directory: src/pftd
-        run: |
-          VER="${GITHUB_REF_NAME#v}"
-          MAJOR="${VER%%.*}"
-          REST="${VER#*.}"
-          MINOR="${REST%%.*}"
-          PATCH="${REST#*.}"
-          cat > version.inc <<EOF
-          VERSION_MAJOR equ ${MAJOR}
-          VERSION_MINOR equ ${MINOR}
-          VERSION_PATCH equ ${PATCH}
-          EOF
-
       - name: Build PFTD.COM
         run: make pftd
 
