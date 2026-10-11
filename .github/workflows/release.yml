@@ -1,0 +1,40 @@
+name: Release PFTD.COM
+
+on:
+  workflow_run:
+    workflows: ["Test PFTD (MAME)"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout POFOSCAB
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Download PFTD.COM artifact from the test run
+        uses: actions/download-artifact@v4
+        with:
+          name: PFTD-COM
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Package for release
+        run: zip "PFTD-${{ github.event.workflow_run.head_branch }}.zip" PFTD.COM
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.event.workflow_run.head_branch }}" \
+            "PFTD-${{ github.event.workflow_run.head_branch }}.zip" \
+            --title "${{ github.event.workflow_run.head_branch }}" \
+            --generate-notes
