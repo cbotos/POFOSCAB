@@ -7,4 +7,4 @@
 ; The value committed here is a local dev snapshot marker, bumped by
 ; hand between CI runs.
 
-BUILD_ID  equ 0xFFFF0002
+BUILD_ID  equ 0xFFFF0003

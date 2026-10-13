@@ -46,79 +46,57 @@ dispatch_getdatetime:
         push    cs
         pop     ds
 
-        ; AH=0x2A Get Date: CX=year (1980-2099+), DH=month, DL=day.
+        ; Get Date: CX=year, DH=month, DL=day
         mov     ah, 0x2A
         int     0x21
 
-        ; Pack into date bits 15-9=year-1980/8-5=month/4-0=day. Built
-        ; up bit-field by bit-field (day, then month<<5, then
-        ; year-1980<<9) rather than computing year's shift directly,
-        ; since CPU 8086 only has single-bit shl/shr (no shl reg,imm8)
-        ; - same constraint hexprint.inc's header documents.
-        sub     cx, 1980                ; cx = year-1980
-        shl     cx, 1
-        shl     cx, 1
-        shl     cx, 1
-        shl     cx, 1
-        shl     cx, 1
-        shl     cx, 1
-        shl     cx, 1
-        shl     cx, 1
-        shl     cx, 1                   ; cx = (year-1980) << 9
+        ; Pack date: year<<9 | month<<5 | day
+        sub     cx, 1980
+        mov     ax, cx
+        mov     cl, 9
+        shl     ax, cl
+        mov     bx, ax
 
-        xor     ax, ax
-        mov     al, dh                  ; al = month
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1                   ; ax = month << 5
-        or      cx, ax
+        xor     ah, ah
+        mov     al, dh
+        mov     cl, 5
+        shl     ax, cl
+        or      bx, ax
 
-        xor     ax, ax
-        mov     al, dl                  ; al = day (bits 4-0, no shift)
-        or      cx, ax
+        xor     dh, dh
+        or      bl, dl
+        mov     [datetime_response], bx
 
-        mov     [datetime_response], cx
-
-        ; AH=0x2C Get Time: CH=hour, CL=minute, DH=second, DL=hundredths
-        ; (dropped - packed format has no field for it). Pack into time
-        ; bits 15-11=hour/10-5=minute/4-0=second/2.
+        ; Get Time: CH=hour, CL=minute, DH=second
         mov     ah, 0x2C
         int     0x21
+
+        ; Pack time: hour<<11 | minute<<5 | second/2
+        mov     bl, cl                  ; save minutes
+        mov     bh, dh                  ; save seconds
+
         xor     ah, ah
-        mov     al, ch                  ; al = hour
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1                   ; ax = hour << 11
-        mov     bx, ax
-        xor     ax, ax
-        mov     al, cl                  ; al = minute
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1
-        shl     ax, 1                   ; ax = minute << 5
+        mov     al, ch
+        mov     cl, 11
+        shl     ax, cl                  ; hour << 11
+        xchg    ax, bx                  ; BX=hour shifted, AX=saved values
+
+        ; AX now contains seconds in AH, minutes in AL
+        mov     ch, ah                  ; save seconds
+        xor     ah, ah
+        mov     cl, 5
+        shl     ax, cl                  ; minute << 5
         or      bx, ax
-        xor     ax, ax
-        mov     al, dh                  ; al = second
-        shr     ax, 1                   ; second/2 (packed format's
-                                         ; 5-bit field only holds 0-29,
-                                         ; each unit = 2 real seconds)
+
+        xor     ah, ah
+        mov     al, ch
+        shr     ax, 1                   ; second / 2
         or      bx, ax
         mov     [datetime_response+2], bx
 
         mov     dx, datetime_response
         mov     cx, 4
-        mov     ax, 0x3000              ; AH=0x30 AL=0 = transmit block
+        mov     ax, 0x3000
         int     0x61
 
         pop     ds
@@ -168,24 +146,18 @@ dispatch_setdatetime:
         ; for AH=0x2B. Packed layout: bits 15-9=year-1980, 8-5=month,
         ; 4-0=day.
         mov     dl, al
-        and     dl, 0x1F                ; dl = day (bits 4-0)
+        and     dl, 0x1F        ; day
 
         mov     bx, ax
-        shr     bx, 1
-        shr     bx, 1
-        shr     bx, 1
-        shr     bx, 1
-        shr     bx, 1                   ; bx = packed >> 5 (month in low
-                                         ; 4 bits, year-1980 above that)
+        mov     cl, 5
+        shr     bx, cl
         mov     dh, bl
-        and     dh, 0x0F                ; dh = month
+        and     dh, 0x0F        ; month
 
-        shr     bx, 1
-        shr     bx, 1
-        shr     bx, 1
-        shr     bx, 1                   ; bx = year-1980
+        mov     cl, 4
+        shr     bx, cl
         add     bx, 1980
-        mov     cx, bx                  ; cx = year
+        mov     cx, bx          ; year
 
         mov     byte [cs:critical_error_flag], 0
         mov     ah, 0x2B                ; Set Date
@@ -199,28 +171,22 @@ dispatch_setdatetime:
         ; DH=second, DL=0 for AH=0x2D. Packed layout: bits
         ; 15-11=hour, 10-5=minute, 4-0=second/2.
         mov     ax, [setdatetime_packed_time]
+
         mov     dh, al
-        and     dh, 0x1F                ; dh = second/2 units
-        add     dh, dh                  ; dh = second (units * 2)
+        and     dh, 0x1F
+        add     dh, dh          ; seconds
 
-        shr     ax, 1
-        shr     ax, 1
-        shr     ax, 1
-        shr     ax, 1
-        shr     ax, 1                   ; ax = packed >> 5 (minute in
-                                         ; low 6 bits, hour above that)
-        mov     cl, al
-        and     cl, 0x3F                ; cl = minute
+        mov     cl, 5
+        shr     ax, cl
+        mov     bl, al
+        and     bl, 0x3F        ; minutes
 
-        shr     ax, 1
-        shr     ax, 1
-        shr     ax, 1
-        shr     ax, 1
-        shr     ax, 1
-        shr     ax, 1                   ; ax = hour
-        mov     ch, al                  ; ch = hour
-        mov     dl, 0                   ; hundredths - no source field,
-                                         ; always 0
+        mov     cl, 6
+        shr     ax, cl
+        mov     ch, al          ; hours
+        mov     cl, bl          ; minutes
+
+        xor     dl, dl          ; hundredths
 
         mov     byte [cs:critical_error_flag], 0
         mov     ah, 0x2D                ; Set Time
