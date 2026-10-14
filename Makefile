@@ -45,7 +45,7 @@ $(PFTC_BIN): $(PFTC_SRC) $(PFTC_SUPPORT_SRC) $(PFTC_HEADERS) | $(BUILD_DIR)
 
 # Assumes the bridge (or ESP smart-cable client) is already running at
 # HOST:PORT and the Portfolio is sitting in File Transfer Server mode.
-# Direct curl multipart POST to the bridge's /upload endpoint (see
+# Direct curl multipart POST to the bridge's /uploadFile endpoint (see
 # mame_bridge.py's do_POST) - destDir is a query param, left off
 # entirely when DEST_DIR is empty so the bridge's own C:\ default
 # applies. DEST_DIR_ENC substitutes %5C for \ (DOS path separator)
@@ -55,10 +55,10 @@ DEST_DIR_ENC = $(subst \,%5C,$(DEST_DIR))
 
 upload-pftd: $(PFTD_BIN)
 	curl -sf -F "file=@$(PFTD_BIN)" \
-		"http://$(HOST):$(PORT)/upload$(if $(DEST_DIR),?destDir=$(DEST_DIR_ENC))"
+		"http://$(HOST):$(PORT)/uploadFile$(if $(DEST_DIR),?destDir=$(DEST_DIR_ENC))"
 
 upload-pftc: $(PFTC_BIN)
 	curl -sf -F "file=@$(PFTC_BIN)" \
-		"http://$(HOST):$(PORT)/upload$(if $(DEST_DIR),?destDir=$(DEST_DIR_ENC))"
+		"http://$(HOST):$(PORT)/uploadFile$(if $(DEST_DIR),?destDir=$(DEST_DIR_ENC))"
 clean:
 	rm -rf $(BUILD_DIR)

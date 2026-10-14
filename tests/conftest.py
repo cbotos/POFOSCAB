@@ -304,7 +304,7 @@ def _setup_screenshot(cfg, mame_ctl, name: str) -> None:
 
 
 def _upload_pftd(bridge_url: str) -> None:
-    """Upload the already-built build/PFTD.COM via the bridge's /upload
+    """Upload the already-built build/PFTD.COM via the bridge's /uploadFile
     endpoint - pytest never builds it, only uploads what's already there.
     """
     import urllib.parse
@@ -324,7 +324,7 @@ def _upload_pftd(bridge_url: str) -> None:
         f'Content-Disposition: form-data; name="file"; filename="PFTD.COM"\r\n'
         f"Content-Type: application/octet-stream\r\n\r\n"
     ).encode() + data + f"\r\n--{boundary}--\r\n".encode()
-    url = f"{bridge_url}/upload?{urllib.parse.urlencode({'destDir': 'C:\\'})}"
+    url = f"{bridge_url}/uploadFile?{urllib.parse.urlencode({'destDir': 'C:\\'})}"
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
     with urllib.request.urlopen(req, timeout=30) as resp:

@@ -105,7 +105,7 @@ POFOSCAB_BRIDGE_URL=http://localhost:9000 pytest -v
 - `FORMAT_A=1` - format the A: memory card (needed once on a clean
   environment - an unformatted card fails any write with errcode 1,
   see test_pftd.py's test_copy_cross_drive)
-- `UPLOAD=1` - upload `build/PFTD.COM` via the bridge's `/upload`
+- `UPLOAD=1` - upload `build/PFTD.COM` via the bridge's `/uploadFile`
   endpoint (pytest never builds it - build it first)
 - `SERVER=1` - drive the ROM into File Transfer Server mode
 - `PFTD=1` - exit the server, start PFTD as a TSR, re-enter the server

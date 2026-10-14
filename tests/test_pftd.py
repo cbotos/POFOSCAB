@@ -23,8 +23,8 @@ from conftest import config, wait_for_http
 
 
 def _multipart_body(filename: str, data: bytes) -> tuple[bytes, str]:
-    """Build a single-file multipart/form-data body for /upload, matching
-    what the ESP32 client firmware's <input type=file> POST sends.
+    """Build a single-file multipart/form-data body for /uploadFile,
+    matching what the ESP32 client firmware's <input type=file> POST sends.
     """
     boundary = uuid.uuid4().hex
     body = (
@@ -94,13 +94,13 @@ def remove_path(base_url: str, path: str, command: int) -> None:
 
 
 def upload_file(base_url: str, path: str, data: bytes) -> bool:
-    """Upload file via /upload endpoint. `path` is the full destination
+    """Upload file via /uploadFile endpoint. `path` is the full destination
     path on the Portfolio (e.g. "C:\\T1234567") - split into destDir +
-    filename to match the ESP32 client firmware's /upload API.
+    filename to match the ESP32 client firmware's /uploadFile API.
     """
     dest_dir, _, filename = path.rpartition("\\")
     body, boundary = _multipart_body(filename, data)
-    url = f"{base_url}/upload?toAtari=1{urllib.parse.urlencode({'&destDir': dest_dir + '\\'})}"
+    url = f"{base_url}/uploadFile?toAtari=1{urllib.parse.urlencode({'&destDir': dest_dir + '\\'})}"
     req_obj = urllib.request.Request(url, data=body, method="POST")
     req_obj.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
     with urllib.request.urlopen(req_obj, timeout=30) as resp:

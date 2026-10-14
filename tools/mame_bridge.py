@@ -49,7 +49,7 @@ PAYLOAD_BUFSIZE = 60000
 def parse_multipart_file(content_type: str, body: bytes) -> tuple[str, bytes] | None:
     """Extract (filename, data) for the first file part of a multipart/
     form-data body - just enough to support the ESP32 client's plain
-    single-file <input type=file> POST to /upload. Returns None if
+    single-file <input type=file> POST to /uploadFile. Returns None if
     content_type isn't multipart or no file part with a filename is
     found.
     """
@@ -630,7 +630,7 @@ def make_handler(state: BridgeState):
             raw_body = self.rfile.read(length)
             url_path = urllib.parse.urlparse(self.path).path
 
-            if url_path not in ("/sendRaw", "/upload", "/downloadFile"):
+            if url_path not in ("/sendRaw", "/uploadFile", "/downloadFile"):
                 self.send_error(404)
                 return
 
@@ -654,7 +654,7 @@ def make_handler(state: BridgeState):
                     except PortfolioLinkError as exc:
                         self._send_json({"ok": False, "error": str(exc)}, status=502)
 
-            elif url_path == "/upload":
+            elif url_path == "/uploadFile":
                 content_type = self.headers.get("Content-Type", "")
                 parsed = parse_multipart_file(content_type, raw_body)
                 if parsed is None:
