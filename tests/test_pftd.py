@@ -17,6 +17,7 @@ import uuid
 import warnings
 import urllib.request
 import urllib.parse
+import urllib.error
 import pytest
 from conftest import config, wait_for_http
 
@@ -107,12 +108,35 @@ def upload_file(base_url: str, path: str, data: bytes) -> bool:
 
 
 def download_file(base_url: str, path: str) -> bytes | None:
-    """Download file via /downloadFile endpoint."""
+    """Download file via /downloadFile endpoint.
+
+    Success is raw file bytes (application/octet-stream, HTTP 200);
+    failure is a 4xx/5xx status with a {"ok":false,"message":...} JSON
+    body, which urlopen surfaces as HTTPError.
+    """
     body = urllib.parse.urlencode({"path": path}).encode()
     req_obj = urllib.request.Request(f"{base_url}/downloadFile", data=body, method="POST")
-    with urllib.request.urlopen(req_obj, timeout=30) as resp:
-        parsed = json.loads(resp.read().decode())
-    return bytes.fromhex(parsed["data"]) if parsed["ok"] else None
+    try:
+        with urllib.request.urlopen(req_obj, timeout=30) as resp:
+            return resp.read()
+    except urllib.error.HTTPError:
+        return None
+
+
+def download_file_status(base_url: str, path: str) -> int:
+    """Like download_file(), but returns the HTTP status code instead of
+    the body - success is 200, "path not found" is 404 (PofoResult::
+    REMOTE_ERROR - the Portfolio answered, just not with the file), other
+    failures (bad args, link down, transfer already running) are their
+    own 4xx/5xx.
+    """
+    body = urllib.parse.urlencode({"path": path}).encode()
+    req_obj = urllib.request.Request(f"{base_url}/downloadFile", data=body, method="POST")
+    try:
+        with urllib.request.urlopen(req_obj, timeout=30) as resp:
+            return resp.status
+    except urllib.error.HTTPError as e:
+        return e.code
 
 
 def pack_date(year: int, month: int, day: int) -> int:
@@ -291,6 +315,11 @@ class TestFileTransfer:
 
             downloaded = download_file(base_url, path)
             assert downloaded == test_content, f"Download mismatch: {downloaded!r}"
+
+            missing = unique_path("C", ".TXT")
+            assert download_file(base_url, missing) is None, "Expected error downloading nonexistent file"
+            status = download_file_status(base_url, missing)
+            assert status == 404, f"Expected 404 for nonexistent file, got {status}"
         finally:
             remove_path(base_url, path, 0x89)
 
