@@ -58,7 +58,9 @@ jobs:
         run: make pftd
 
       - name: Install pytest
-        run: sudo apt-get install -y python3-pytest
+        run: |
+          sudo apt-get install -y python3-pytest
+          pip install --break-system-packages pytest-html
 
       - name: Start MAME under -console with FIFOs
         run: |
@@ -86,7 +88,8 @@ jobs:
           PFTD: "1"
         run: |
           cd tests
-          python3 -m pytest -v --junitxml=junit.xml
+          python3 -m pytest -v --junitxml=junit.xml \
+            --html=test-report.html --self-contained-html
 
       - name: Upload MAME artifacts (screenshots/vram dumps)
         if: always()
@@ -101,6 +104,14 @@ jobs:
         if: always()
         with:
           files: tests/junit.xml
+
+      - name: Upload pytest HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: tests/test-report.html
+          if-no-files-found: ignore
 
       - name: Stop MAME and bridge
         if: always()
