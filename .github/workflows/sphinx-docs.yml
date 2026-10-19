@@ -1,0 +1,86 @@
+name: Build and Deploy Sphinx Documentation
+
+on:
+  workflow_run:
+    workflows: ["Test PFTD (MAME)"]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install doc build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r docs/requirements.txt
+
+      - name: Download MAME test artifacts (screenshots)
+        if: github.event_name == 'workflow_run'
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          run_id: ${{ github.event.workflow_run.id }}
+          name: mame-test-artifacts
+          path: test-artifacts/screenshots
+          if_no_artifact_found: ignore
+
+      - name: Download pytest HTML report
+        if: github.event_name == 'workflow_run'
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          run_id: ${{ github.event.workflow_run.id }}
+          name: test-report
+          path: test-artifacts
+          if_no_artifact_found: ignore
+
+      - name: Build Sphinx documentation
+        run: |
+          cd docs
+          make html
+
+      - name: Copy test artifacts into docs output
+        run: |
+          mkdir -p docs/build/html/tests
+          [ -f test-artifacts/test-report.html ] && cp test-artifacts/test-report.html docs/build/html/tests/report.html || true
+          [ -d test-artifacts/screenshots ] && cp -r test-artifacts/screenshots docs/build/html/tests/screenshots || true
+
+      - name: Generate screenshot gallery
+        if: hashFiles('docs/build/html/tests/screenshots/**/*.png') != ''
+        run: python3 docs/tools/gen_screenshot_gallery.py docs/build/html/tests/screenshots docs/build/html/tests/screenshots.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'docs/build/html'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
