@@ -13,6 +13,7 @@ Usage:
 
 import json
 import os
+import re
 import uuid
 import warnings
 import urllib.request
@@ -52,6 +53,29 @@ def send_raw(base_url: str, hexdata: str) -> str:
     if isinstance(parsed, dict) and "response" in parsed:
         return parsed["response"]
     return body
+
+
+def expected_pftd_version() -> tuple[int, int, int]:
+    """Read the version expected by this checkout's PFTD source."""
+    path = os.path.join(config.PROJECT_ROOT, "src", "pftd", "version.inc")
+    with open(path) as f:
+        text = f.read()
+    values = []
+    for name in ("VERSION_MAJOR", "VERSION_MINOR", "VERSION_PATCH"):
+        match = re.search(rf"^{name}\s+equ\s+(\d+)\s*$", text, re.MULTILINE)
+        assert match, f"Couldn't read {name} from {path}"
+        values.append(int(match.group(1)))
+    return tuple(values)
+
+
+def expected_pftd_build_id() -> int:
+    """Read the build ID expected by this checkout's PFTD source."""
+    path = os.path.join(config.PROJECT_ROOT, "src", "pftd", "build_id.inc")
+    with open(path) as f:
+        text = f.read()
+    match = re.search(r"^BUILD_ID\s+equ\s+0x([0-9A-Fa-f]+)\s*$", text, re.MULTILINE)
+    assert match, f"Couldn't read BUILD_ID from {path}"
+    return int(match.group(1), 16)
 
 
 def get_status(base_url: str) -> dict:
@@ -234,9 +258,31 @@ class TestBasic:
         assert st.get("connected"), "Portfolio not connected"
 
     def test_hello(self, base_url):
-        """HELLO (0x80) - magic number check."""
+        """HELLO (0x80) - response framing and deployed version check."""
         r = send_raw(base_url, "80")
         assert r[:8].lower() == "50464431", f"Expected 'PFD1', got {r}"
+        response = bytes.fromhex(r)
+        assert len(response) == 12, f"Expected 12-byte HELLO response, got {len(response)}"
+        deployed_build_id = int.from_bytes(response[4:8], "little")
+        expected_build_id = expected_pftd_build_id()
+        if deployed_build_id != expected_build_id:
+            warnings.warn(
+                f"PFTD HELLO reports buildId {deployed_build_id:08x}, "
+                f"but this checkout expects {expected_build_id:08x}; "
+                f"the resident PFTD may be stale",
+                pytest.PytestWarning,
+                stacklevel=2,
+            )
+        deployed = tuple(response[8:11])
+        expected = expected_pftd_version()
+        if deployed != expected:
+            warnings.warn(
+                f"PFTD HELLO reports v{deployed[0]}.{deployed[1]}.{deployed[2]}, "
+                f"but this checkout expects v{expected[0]}.{expected[1]}.{expected[2]}; "
+                f"the resident PFTD may be stale",
+                pytest.PytestWarning,
+                stacklevel=2,
+            )
 
     def test_drives(self, base_url):
         """DRIVES (0x87) - single byte response."""
