@@ -217,7 +217,8 @@ layout work.
 0-39), then an ASCIIZ string to print. No bounds checking on row/col/
 text length.
 
-**Response:** none - fire-and-forget.
+**Response:** see [Status/errcode response](#statuserrcode-response).
+Always `0x20`/`0` - no error path.
 
 ## Status/errcode response
 
@@ -258,7 +259,3 @@ uses in directory entries:
 | 15-11 | Hour (0-23). |
 | 10-5 | Minute (0-59). |
 | 4-0 | Second, divided by 2 (range 0-29; odd seconds are not representable). |
-
-## Reserved command codes
-
-`0x81`-`0x85` and `0x90`-`0xFF` are unassigned.
