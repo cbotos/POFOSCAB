@@ -49,8 +49,8 @@ def main() -> int:
 <style>
 body {{ font-family: sans-serif; margin: 1.5em; }}
 .grid {{ display: flex; flex-wrap: wrap; gap: 1.5em; }}
-figure {{ margin: 0; max-width: 480px; }}
-img {{ max-width: 100%; image-rendering: pixelated; border: 1px solid #ccc; }}
+figure {{ margin: 0; }}
+img {{ width: 480px; image-rendering: pixelated; border: 1px solid #ccc; }}
 figcaption {{ font-size: 0.85em; color: #555; text-align: center; }}
 </style>
 </head>

@@ -11,8 +11,9 @@ It shows test execution status, duration, assertions, and failure tracebacks.
 
 ## Screenshots
 
-MAME screenshots captured during the test run, grouped by test. See the
-[full gallery](tests/screenshots.html).
+```{raw} html
+<p>MAME screenshots captured during the test run, grouped by test. See the <a href="tests/screenshots.html">full gallery</a>.</p>
+```
 
 ```{raw} html
 <iframe src="tests/screenshots.html" width="100%" height="800px" frameborder="0" style="border: none; display: block; margin: 0; padding: 0;"></iframe>
