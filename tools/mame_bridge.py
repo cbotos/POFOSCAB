@@ -690,9 +690,13 @@ def make_handler(state: BridgeState):
                         self._send_json({"ok": False, "error": str(exc)}, status=502)
                         return
                 if data is None:
-                    self._send_json({"ok": False})
+                    self._send_json({"ok": False, "message": "not found"}, status=404)
                 else:
-                    self._send_json({"ok": True, "data": data.hex()})
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/octet-stream")
+                    self.send_header("Content-Length", str(len(data)))
+                    self.end_headers()
+                    self.wfile.write(data)
 
     return Handler
 
