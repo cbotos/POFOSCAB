@@ -2,6 +2,11 @@
 """Generates a static HTML gallery of MAME test screenshots, grouped by
 test name (subdirectory), for the Sphinx docs test_results page.
 
+<output_html> is expected to live one directory above <screenshots_dir>
+(e.g. tests/screenshots.html next to tests/screenshots/), so image src
+paths are prefixed with the screenshots dir's own name to stay correct
+from there.
+
 Usage: gen_screenshot_gallery.py <screenshots_dir> <output_html>
 """
 import html
@@ -16,11 +21,13 @@ def main() -> int:
 
     src_dir = Path(sys.argv[1])
     out_path = Path(sys.argv[2])
+    src_prefix = src_dir.name
 
     groups = {}
     for png in sorted(src_dir.rglob('*.png')):
         group = png.parent.relative_to(src_dir).as_posix()
-        groups.setdefault(group, []).append(png.relative_to(src_dir).as_posix())
+        rel = (Path(src_prefix) / png.relative_to(src_dir)).as_posix()
+        groups.setdefault(group, []).append(rel)
 
     sections = []
     for group in sorted(groups):
@@ -41,9 +48,9 @@ def main() -> int:
 <title>MAME test screenshots</title>
 <style>
 body {{ font-family: sans-serif; margin: 1.5em; }}
-.grid {{ display: flex; flex-wrap: wrap; gap: 1em; }}
-figure {{ margin: 0; max-width: 320px; }}
-img {{ max-width: 100%; border: 1px solid #ccc; }}
+.grid {{ display: flex; flex-wrap: wrap; gap: 1.5em; }}
+figure {{ margin: 0; max-width: 480px; }}
+img {{ max-width: 100%; image-rendering: pixelated; border: 1px solid #ccc; }}
 figcaption {{ font-size: 0.85em; color: #555; text-align: center; }}
 </style>
 </head>
