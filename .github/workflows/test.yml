@@ -54,6 +54,20 @@ jobs:
           wget -4 -q "https://mdk.cab/download/standalone/pofo.7z" -O /tmp/pofo.7z
           7z x -y -oroms/pofo /tmp/pofo.7z
 
+      - name: Generate build_id.inc from git short hash
+        working-directory: src/pftd
+        run: |
+          HASH=$(git rev-parse --short=8 HEAD)
+          cat > build_id.inc <<EOF
+          ; build_id.inc - CI-generated, see this file's committed
+          ; version in git for the full explanation. This copy is
+          ; overwritten wholesale by .github/workflows/test.yml, not
+          ; patched - BUILD_ID here is the exact commit's short hash.
+
+          BUILD_ID  equ 0x${HASH}
+          EOF
+          cat build_id.inc
+
       - name: Build PFTD.COM
         run: make pftd
 
